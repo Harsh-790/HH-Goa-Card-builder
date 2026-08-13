@@ -878,6 +878,56 @@ function showSuccess() {
 }
 
 
+async function uploadCardToCloudinary(blob) {
+    const cloudName = "agqqjkhl";
+    const uploadPreset = "hh_goa_share";
+
+    const formData = new FormData();
+
+    formData.append("file", blob, "hh-goa-2026-builder-id.png");
+    formData.append("upload_preset", uploadPreset);
+
+    const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+            method: "POST",
+            body: formData
+        }
+    );
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error("Cloudinary upload failed: " + errorText);
+    }
+
+    const data = await response.json();
+
+    if (!data.secure_url) {
+        throw new Error("Cloudinary did not return an image URL.");
+    }
+
+    return data.secure_url;
+}
+
+
+function canvasToBlob(canvas) {
+    return new Promise((resolve, reject) => {
+
+        canvas.toBlob(
+            (blob) => {
+                if (blob) {
+                    resolve(blob);
+                } else {
+                    reject(new Error("Could not create PNG image."));
+                }
+            },
+            "image/png"
+        );
+
+    });
+}
+
+
 shareBtn.addEventListener(
     "click",
     async () => {
@@ -886,87 +936,116 @@ shareBtn.addEventListener(
             return;
         }
 
+        const xWindow = window.open(
+            "about:blank",
+            "_blank"
+        );
+
         try {
 
             const canvas =
                 await renderCardToCanvas();
 
-
-            canvas.toBlob(
-                (blob) => {
-
-                    if (blob) {
-
-                        const url =
-                            URL.createObjectURL(blob);
+            const blob =
+                await canvasToBlob(canvas);
 
 
-                        const link =
-                            document.createElement("a");
+            const downloadUrl =
+                URL.createObjectURL(blob);
+
+            const link =
+                document.createElement("a");
+
+            link.href = downloadUrl;
+
+            link.download =
+                "hh-goa-2026-builder-id.png";
+
+            document.body.appendChild(link);
+
+            link.click();
+
+            link.remove();
+
+            setTimeout(() => {
+                URL.revokeObjectURL(downloadUrl);
+            }, 2000);
+
+            const imageUrl =
+                await uploadCardToCloudinary(blob);
+
+            const name =
+                nameInput.value.trim();
+
+            const caption =
+                    `From “let's build” to “shipped in Goa.” 🌴💻⚡ ${name ? name + " • " : ""}#FrameInGoa
+
+                Your turn → https://hh-goa-card-builder.onrender.com
+                Go generate your own Builder Card ✦ #FrameInGoa`;
+
+            const xUrl =
+                "https://twitter.com/intent/tweet?" +
+                "text=" +
+                encodeURIComponent(caption) +
+                "&url=" +
+                encodeURIComponent(imageUrl);
 
 
-                        link.href = url;
+            if (xWindow && !xWindow.closed) {
 
-                        link.download =
-                            "hh-goa-2026-builder-id.png";
+                xWindow.location.href = xUrl;
 
+            } else {
 
-                        document.body.appendChild(link);
+                window.open(
+                    xUrl,
+                    "_blank",
+                    "noopener,noreferrer"
+                );
 
-                        link.click();
-
-                        link.remove();
-
-
-                        setTimeout(() => {
-
-                            URL.revokeObjectURL(url);
-
-                        }, 1500);
-
-                    }
-
-
-                    openXIntent();
-
-                },
-                "image/png"
-            );
+            }
 
         } catch (error) {
 
-            console.error(error);
+            console.error(
+                "Share error:",
+                error
+            );
 
-            openXIntent();
+            const name =
+                nameInput.value.trim();
 
+           const caption =
+                    `From “let's build” to “shipped in Goa.” 🌴💻⚡ ${name ? name + " • " : ""}#FrameInGoa
+
+                Your turn → https://hh-goa-card-builder.onrender.com
+                Go generate your own Builder Card ✦ #FrameInGoa`;
+                
+            const xUrl =
+                "https://twitter.com/intent/tweet?text=" +
+                encodeURIComponent(caption);
+
+            if (xWindow && !xWindow.closed) {
+
+                xWindow.location.href = xUrl;
+
+            } else {
+
+                window.open(
+                    xUrl,
+                    "_blank",
+                    "noopener,noreferrer"
+                );
+
+            }
+
+            showError(
+                "CARD CREATED. X OPENED, BUT IMAGE LINK COULD NOT BE CREATED."
+            );
         }
 
     }
 );
-
-
-function openXIntent() {
-
-    const name =
-        nameInput.value.trim();
-
-
-    const caption =
-        `I just built my HH Goa 2026 Builder ID 🌴⚡ ${name ? "— " + name + " " : ""}#FrameInGoa`;
-
-
-    const xUrl =
-        "https://twitter.com/intent/tweet?text=" +
-        encodeURIComponent(caption);
-
-
-    window.open(
-        xUrl,
-        "_blank",
-        "noopener,noreferrer"
-    );
-
-}
 
 
 document.addEventListener(

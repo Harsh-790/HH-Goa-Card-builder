@@ -665,548 +665,99 @@ function drawPalm(
 
 }
 
-
 async function renderCardToCanvas() {
 
-    const canvas =
-        document.createElement("canvas");
+    const card = document.getElementById("idCard");
 
-    canvas.width = 1200;
-
-    canvas.height = 1500;
-
-    const ctx = canvas.getContext("2d");
-
-
-
-    const GREEN = "#075b42";
-
-    const DEEP_GREEN = "#043e2f";
-
-    const YELLOW = "#f5d33b";
-
-    const CREAM = "#f5eedb";
-
-    const PINK = "#ed7d7d";
-
-
-    ctx.fillStyle = GREEN;
-
-    ctx.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-
-
-    ctx.beginPath();
-
-    ctx.arc(
-        1040,
-        430,
-        300,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.fillStyle = YELLOW;
-
-    ctx.fill();
-
-
-
-    ctx.save();
-
-    ctx.beginPath();
-
-    ctx.arc(
-        1040,
-        430,
-        300,
-        0,
-        Math.PI * 2
-    );
-
-    ctx.clip();
-
-    ctx.strokeStyle =
-        "rgba(7,91,66,0.25)";
-
-    ctx.lineWidth = 16;
-
-
-    for (
-        let y = 170;
-        y < 700;
-        y += 42
-    ) {
-
-        ctx.beginPath();
-
-        ctx.moveTo(700, y);
-
-        ctx.lineTo(1300, y);
-
-        ctx.stroke();
-
+    if (!card) {
+        throw new Error("Builder ID card not found.");
     }
 
-    ctx.restore();
+    updateCard();
 
+    // Fonts load hone do
+    if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+    }
 
-    drawText(
-        ctx,
-        "HH",
-        75,
-        105,
-        "72px 'Bebas Neue'",
-        YELLOW
+    // Card ke images load hone do
+    const images = card.querySelectorAll("img");
+
+    await Promise.all(
+        Array.from(images).map((img) => {
+            return new Promise((resolve) => {
+
+                if (img.complete && img.naturalWidth > 0) {
+                    resolve();
+                } else {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                    setTimeout(resolve, 5000);
+                }
+
+            });
+        })
     );
 
-    drawText(
-        ctx,
-        "GOA",
-        180,
-        105,
-        "130px 'Bebas Neue'",
-        YELLOW
-    );
+    const backgroundImage =
+        card.querySelector(".card-bottom-photo img");
 
-    drawText(
-        ctx,
-        "2026",
-        730,
-        100,
-        "105px 'Bebas Neue'",
-        CREAM
-    );
+    if (backgroundImage && backgroundImage.src) {
 
+        try {
 
-    drawText(
-        ctx,
-        "BUILDER",
-        1090,
-        70,
-        "20px 'DM Mono'",
-        DEEP_GREEN,
-        "right"
-    );
+            const response = await fetch(backgroundImage.src);
 
-    drawText(
-        ctx,
-        "ID",
-        1090,
-        102,
-        "32px 'DM Mono'",
-        DEEP_GREEN,
-        "right"
-    );
+            const blob = await response.blob();
 
-    drawPalm(
-        ctx,
-        1060,
-        700,
-        1.35
-    );
+            const dataUrl = await new Promise((resolve, reject) => {
 
-    const photoX = 80;
+                const reader = new FileReader();
 
-    const photoY = 215;
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
 
-    const photoW = 660;
+                reader.readAsDataURL(blob);
 
-    const photoH = 620;
+            });
 
-    ctx.beginPath();
+            backgroundImage.src = dataUrl;
 
-    ctx.arc(
-        755,
-        220,
-        80,
-        0,
-        Math.PI * 2
-    );
+            // Image dobara load hone do
+            await new Promise((resolve) => {
+                backgroundImage.onload = resolve;
+                setTimeout(resolve, 1000);
+            });
 
-    ctx.fillStyle = PINK;
+        } catch (error) {
 
-    ctx.fill();
-
-    ctx.save();
-
-    roundedRect(
-        ctx,
-        photoX,
-        photoY,
-        photoW,
-        photoH,
-        80
-    );
-
-    ctx.clip();
-
-
-    if (uploadedPhoto) {
-
-        drawImageCover(
-            ctx,
-            uploadedPhoto,
-            photoX,
-            photoY,
-            photoW,
-            photoH
-        );
-
-    } else {
-
-        const gradient =
-            ctx.createLinearGradient(
-                photoX,
-                photoY,
-                photoX + photoW,
-                photoY + photoH
+            console.error(
+                "Background image conversion failed:",
+                error
             );
 
-        gradient.addColorStop(
-            0,
-            DEEP_GREEN
-        );
-
-        gradient.addColorStop(
-            1,
-            GREEN
-        );
-
-        ctx.fillStyle = gradient;
-
-        ctx.fillRect(
-            photoX,
-            photoY,
-            photoW,
-            photoH
-        );
-
-
-        drawText(
-            ctx,
-            "YOUR",
-            photoX + photoW / 2,
-            photoY + photoH / 2 - 10,
-            "80px 'Bebas Neue'",
-            "rgba(245,238,219,.55)",
-            "center"
-        );
-
-        drawText(
-            ctx,
-            "PHOTO",
-            photoX + photoW / 2,
-            photoY + photoH / 2 + 75,
-            "80px 'Bebas Neue'",
-            "rgba(245,238,219,.55)",
-            "center"
-        );
-
+        }
     }
 
-    ctx.restore();
+    const canvas = await html2canvas(card, {
 
-    ctx.strokeStyle = CREAM;
+        scale: 3,
 
-    ctx.lineWidth = 14;
+        backgroundColor: null,
 
-    roundedRect(
-        ctx,
-        photoX,
-        photoY,
-        photoW,
-        photoH,
-        80
-    );
+        useCORS: false,
 
-    ctx.stroke();
+        allowTaint: false,
 
-    ctx.fillStyle = YELLOW;
+        imageTimeout: 15000,
 
-    ctx.fillRect(
-        610,
-        795,
-        180,
-        50
-    );
+        logging: false,
 
-    drawText(
-        ctx,
-        "NO. 026",
-        700,
-        829,
-        "18px 'DM Mono'",
-        DEEP_GREEN,
-        "center"
-    );
+        foreignObjectRendering: false
 
-    const name =
-        nameInput.value.trim() ||
-        "YOUR NAME";
-
-    const role =
-        roleInput.value.trim() ||
-        "YOUR STACK / ROLE";
-
-    const title =
-        titleInput.value.trim() ||
-        "THE PROMPT ALCHEMIST";
-
-
-    drawText(
-        ctx,
-        "BUILDER / CREATOR",
-        80,
-        930,
-        "18px 'DM Mono'",
-        YELLOW
-    );
-
-    let nameSize = 95;
-
-    if (name.length > 18) {
-        nameSize = 72;
-    }
-
-    if (name.length > 25) {
-        nameSize = 58;
-    }
-
-    drawText(
-        ctx,
-        name.toUpperCase(),
-        80,
-        1010,
-        `${nameSize}px 'Bebas Neue'`,
-        CREAM
-    );
-
-
-    ctx.fillStyle = YELLOW;
-
-    ctx.fillRect(
-        80,
-        1038,
-        120,
-        8
-    );
-
-
-    drawText(
-        ctx,
-        "STACK / ROLE",
-        80,
-        1080,
-        "14px 'DM Mono'",
-        "rgba(245,238,219,.55)"
-    );
-
-
-    drawText(
-        ctx,
-        role.toUpperCase(),
-        80,
-        1112,
-        "25px 'DM Mono'",
-        CREAM
-    );
-
-
-    drawText(
-        ctx,
-        "BUILDER TITLE",
-        80,
-        1160,
-        "14px 'DM Mono'",
-        "rgba(245,238,219,.55)"
-    );
-
-
-    drawWrappedText(
-        ctx,
-        title.toUpperCase(),
-        80,
-        1194,
-        650,
-        36,
-        "25px 'DM Mono'",
-        YELLOW
-    );
-
-
-    ctx.strokeStyle =
-        "rgba(245,238,219,.3)";
-
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-
-    ctx.moveTo(80, 1320);
-
-    ctx.lineTo(1120, 1320);
-
-    ctx.stroke();
-
-
-    drawText(
-        ctx,
-        "LOCATION",
-        80,
-        1360,
-        "12px 'DM Mono'",
-        "rgba(245,238,219,.45)"
-    );
-
-    drawText(
-        ctx,
-        "GOA, INDIA",
-        80,
-        1390,
-        "16px 'DM Mono'",
-        CREAM
-    );
-
-
-    drawText(
-        ctx,
-        "DATES",
-        340,
-        1360,
-        "12px 'DM Mono'",
-        "rgba(245,238,219,.45)"
-    );
-
-    drawText(
-        ctx,
-        "28–31 OCT 2026",
-        340,
-        1390,
-        "16px 'DM Mono'",
-        CREAM
-    );
-
-
-    drawText(
-        ctx,
-        "#FrameInGoa",
-        1120,
-        1385,
-        "20px 'DM Mono'",
-        YELLOW,
-        "right"
-    );
-
-
-
-    ctx.save();
-
-    ctx.translate(
-        1160,
-        750
-    );
-
-    ctx.rotate(
-        Math.PI / 2
-    );
-
-    drawText(
-        ctx,
-        "HH / 26",
-        0,
-        0,
-        "13px 'DM Mono'",
-        "rgba(245,238,219,.4)"
-    );
-
-    ctx.restore();
-
-
-    drawText(
-        ctx,
-        "✦",
-        1000,
-        1000,
-        "40px Arial",
-        YELLOW
-    );
-
-    drawText(
-        ctx,
-        "✦",
-        900,
-        1170,
-        "20px Arial",
-        PINK
-    );
-
-    drawText(
-        ctx,
-        "•",
-        1030,
-        1100,
-        "30px Arial",
-        YELLOW
-    );
-
-
-
-    ctx.strokeStyle =
-        "rgba(245,211,59,.4)";
-
-    ctx.lineWidth = 4;
-
-    ctx.beginPath();
-
-    ctx.moveTo(-100, 1280);
-
-    ctx.bezierCurveTo(
-        300,
-        1200,
-        600,
-        1430,
-        1300,
-        1250
-    );
-
-    ctx.stroke();
-
-
-    ctx.fillStyle =
-        "rgba(255,255,255,0.025)";
-
-    for (
-        let i = 0;
-        i < 3500;
-        i++
-    ) {
-
-        const x =
-            Math.random() * canvas.width;
-
-        const y =
-            Math.random() * canvas.height;
-
-        const size =
-            Math.random() * 2;
-
-        ctx.fillRect(
-            x,
-            y,
-            size,
-            size
-        );
-
-    }
-
+    });
 
     return canvas;
-
 }
 
 
@@ -1295,7 +846,7 @@ downloadBtn.addEventListener(
             console.error(error);
 
             showError(
-                "SOMETHING WENT WRONG WHILE CREATING YOUR ID."
+                "ERROR: " + error.message
             );
 
             downloadBtn.disabled = false;
